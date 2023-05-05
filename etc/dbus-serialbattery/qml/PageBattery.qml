@@ -12,12 +12,32 @@ MbPage {
 	property VBusItem dcCurrent: VBusItem { bind: service.path("/Dc/0/Current") }
 	property VBusItem midVoltage: VBusItem { bind: service.path("/Dc/0/MidVoltage") }
 	property VBusItem productId: VBusItem { bind: service.path("/ProductId") }
-	property VBusItem cell1: VBusItem { bind: service.path("/Voltages/Cell1") }
+	property VBusItem cell_sum: VBusItem { bind: service.path("/Voltages/Sum") }
+	property VBusItem nrOfDistributors: VBusItem { bind: service.path("/NrOfDistributors") }
+
+	property PageLynxDistributorList distributorListPage
 
 	property bool isFiamm48TL: productId.value === 0xB012
+	property int numberOfDistributors: nrOfDistributors.valid ? nrOfDistributors.value : 0
 
 	title: service.description
 	summary: [soc.item.format(0), dcVoltage.text, dcCurrent.text]
+
+	/* PageLynxDistributorList cannot use Component for its subpages, because of the summary.
+	 * Therefor create it upon reception of /NrOfDistributors instead of when accessing the page
+	 * to prevent a ~3s loading time. */
+	onNumberOfDistributorsChanged: {
+		if (distributorListPage == undefined && numberOfDistributors > 0) {
+			distributorListPage = distributorPageComponent.createObject(root)
+		}
+	}
+
+	Component {
+		id: distributorPageComponent
+		PageLynxDistributorList {
+			bindPrefix: service.path("")
+		}
+	}
 
 	model: VisualItemModel {
 		MbItemOptions {
@@ -183,7 +203,6 @@ MbPage {
 		MbSubMenu {
 			description: qsTr("Details")
 			show: details.anyItemValid
-			title: qsTr("Details")
 			property BatteryDetails details: BatteryDetails { id: details; bindPrefix: service.path("") }
 
 			subpage: Component {
@@ -196,7 +215,7 @@ MbPage {
 
 		MbSubMenu {
 			description: qsTr("Cell Voltages")
-			show: cell1.valid
+			show: cell_sum.valid
 			subpage: Component {
 				PageBatteryCellVoltages {
 					bindPrefix: service.path("")
@@ -259,6 +278,12 @@ MbPage {
 				}
 			}
 			show: isFiamm48TL
+		}
+
+		MbSubMenu {
+			description: qsTr("Fuses")
+			subpage: distributorListPage
+			show: numberOfDistributors > 0
 		}
 
 		MbSubMenu {

@@ -23,6 +23,7 @@ from lltjbd import LltJbd
 from daly import Daly
 from ant import Ant
 from jkbms import Jkbms
+from jkbms_can import Jkbms_can
 from sinowealth import Sinowealth
 from renogy import Renogy
 from revov import Revov
@@ -49,6 +50,7 @@ def main():
             Daly(port=_port, baud=9600, address=b"\x40"),
             Daly(port=_port, baud=9600, address=b"\x80"),
             Jkbms(port=_port, baud=115200),
+            Jkbms_can(port=_port, baud=250000),
             Sinowealth(port=_port, baud=9600),
             Renogy(port=_port, baud=9600),
             Revov (port=_port, baud=9600)
@@ -87,7 +89,7 @@ def main():
     # exit if no battery could be found
     if battery is None:
         logger.error("ERROR >>> No battery connection at " + port)
-        os.exit(1)
+        os._exit(1)
 
     # Have a mainloop, so we can send/receive asynchronous calls to and from dbus
     DBusGMainLoop(set_as_default=True)

@@ -17,16 +17,16 @@ zero_char = chr(48)
 degree_sign = u'\N{DEGREE SIGN}'
 # Cell min/max voltages - used with the cell count to get the min/max battery voltage
 MIN_CELL_VOLTAGE = 2.9
-MAX_CELL_VOLTAGE = 3.45
+MAX_CELL_VOLTAGE = 3.65
 # battery Current limits
 MAX_BATTERY_CURRENT = 50.0
-MAX_BATTERY_DISCHARGE_CURRENT = 60.0
+MAX_BATTERY_DISCHARGE_CURRENT = 100.0
 # Charge current control management enable (True/False). 
 CCCM_ENABLE = True
 
 # Daly settings
 # Battery capacity (amps) if the BMS does not support reading it 
-BATTERY_CAPACITY = 50
+BATTERY_CAPACITY = 105
 # Invert Battery Current. Default non-inverted. Set to -1 to invert
 INVERT_CURRENT_MEASUREMENT = 1
 

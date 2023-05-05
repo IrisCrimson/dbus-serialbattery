@@ -7,5 +7,5 @@
 
 # start -x -s $tty
 app="python /opt/victronenergy/dbus-serialbattery/dbus-serialbattery.py"
-args="/dev/$tty"
+args="can0"
 start $args

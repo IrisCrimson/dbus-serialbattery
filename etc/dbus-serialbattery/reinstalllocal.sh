@@ -33,4 +33,5 @@ if [ -d "$OLD" ]; then
 fi
 
 cp -f /data/etc/dbus-serialbattery/* /opt/victronenergy/dbus-serialbattery
-cp -rf /data/etc/dbus-serialbattery/service/* /opt/victronenergy/service-templates/dbus-serialbattery
+#cp -rf /data/etc/dbus-serialbattery/service/* /opt/victronenergy/service-templates/dbus-serialbattery
+ln -s /data/etc/dbus-serialbattery/service/ /service/dbus-serialbattery

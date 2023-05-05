@@ -36,7 +36,7 @@ class Battery(object):
         self.baud_rate = baud
         self.role = 'battery'
         self.type = 'Generic'
-        self.poll_interval = 1000
+        self.poll_interval = 1500
         self.online = True
 
         self.hardware_version = None
@@ -50,6 +50,7 @@ class Battery(object):
         self.protection = Protection()
         self.version = None
         self.soc = None
+        self.time_to_go = None
         self.charge_fet = None
         self.discharge_fet = None
         self.cell_count = None
@@ -70,6 +71,7 @@ class Battery(object):
         self.max_battery_discharge_current = None
         
         self.time_to_soc_update = TIME_TO_SOC_LOOP_CYCLES
+        self.time_to_go = None
 
     def test_connection(self):
         # Each driver must override this function to test if a connection can be made
@@ -243,8 +245,12 @@ class Battery(object):
         # handle uneven cells by giving half the voltage of the last cell to half1 and half2
         extra = 0 if (2*halfcount == self.cell_count) else self.cells[self.cell_count-1].voltage/2
         # get the midpoint of the battery
-        midpoint = (half1voltage + half2voltage)/2 + extra   
-        return midpoint, abs(1 - half1voltage/half2voltage)*100
+        midpoint = (half1voltage + half2voltage)/2 + extra
+        try:   
+            deviation = abs(1 - half1voltage/half2voltage)*100
+        except:
+            deviation = 0
+        return midpoint, deviation
 
     def get_balancing(self):
         for c in range(min(len(self.cells), self.cell_count)):

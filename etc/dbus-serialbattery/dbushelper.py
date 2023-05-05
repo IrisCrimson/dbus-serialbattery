@@ -97,6 +97,7 @@ class DbusHelper:
 
         # Create SOC, DC and System items
         self._dbusservice.add_path('/Soc', None, writeable=True)
+        self._dbusservice.add_path('/TimeToGo', None, writeable=True)
         self._dbusservice.add_path('/Dc/0/Voltage', None, writeable=True, gettextcallback=lambda p, v: "{:2.2f}V".format(v))
         self._dbusservice.add_path('/Dc/0/Current', None, writeable=True, gettextcallback=lambda p, v: "{:2.2f}A".format(v))
         self._dbusservice.add_path('/Dc/0/Power', None, writeable=True, gettextcallback=lambda p, v: "{:0.0f}W".format(v))
@@ -184,6 +185,7 @@ class DbusHelper:
         # Update SOC, DC and System items
         self._dbusservice['/System/NrOfCellsPerBattery'] = self.battery.cell_count
         self._dbusservice['/Soc'] = round(self.battery.soc, 2)
+        self._dbusservice['/TimeToGo'] = round(self.battery.time_to_go, 2)
         self._dbusservice['/Dc/0/Voltage'] = round(self.battery.voltage, 2)
         self._dbusservice['/Dc/0/Current'] = round(self.battery.current, 2)
         self._dbusservice['/Dc/0/Power'] = round(self.battery.voltage * self.battery.current, 2)
@@ -241,17 +243,32 @@ class DbusHelper:
         #cell voltages
         if (BATTERY_CELL_DATA_FORMAT>0):
             voltageSum = 0
-            for i in range(self.battery.cell_count):
-                voltage = self.battery.get_cell_voltage(i)
+            try:
                 cellpath = '/Cell/%s/Volts' if (BATTERY_CELL_DATA_FORMAT & 2) else '/Voltages/Cell%s'
-                self._dbusservice[cellpath%(str(i+1))] = voltage
-                if (BATTERY_CELL_DATA_FORMAT & 1):
-                    self._dbusservice['/Balances/Cell%s'%(str(i+1))] = self.battery.get_cell_balancing(i)
-                if voltage:
-                    voltageSum+=voltage
-            pathbase = 'Cell' if (BATTERY_CELL_DATA_FORMAT & 2) else 'Voltages'
-            self._dbusservice['/%s/Sum'%pathbase] = voltageSum
-            self._dbusservice['/%s/Diff'%pathbase] = self.battery.get_max_cell_voltage() - self.battery.get_min_cell_voltage()
+                for i in range(self.battery.cell_count):
+                    voltage = self.battery.get_cell_voltage(i)
+
+                    final_cellpath = cellpath%(str(i+1))
+                    if final_cellpath not in self._dbusservice:
+                        self._dbusservice.add_path(final_cellpath, None, writeable=True, gettextcallback=lambda p, v: "{:0.3f}V".format(v))
+                        self._dbusservice['/HardwareVersion'] = self.battery.hardware_version
+
+                    self._dbusservice[final_cellpath] = voltage
+
+                    if (BATTERY_CELL_DATA_FORMAT & 1):
+                        cellpath_balance = '/Balances/Cell%s'%(str(i+1))
+                        if cellpath_balance not in self._dbusservice:
+                            self._dbusservice.add_path(cellpath_balance, None, writeable=True)
+                        
+                        self._dbusservice[cellpath_balance] = self.battery.get_cell_balancing(i)
+
+                    if voltage:
+                        voltageSum+=voltage
+                pathbase = 'Cell' if (BATTERY_CELL_DATA_FORMAT & 2) else 'Voltages'
+                self._dbusservice['/%s/Sum'%pathbase] = voltageSum
+                self._dbusservice['/%s/Diff'%pathbase] = self.battery.get_max_cell_voltage() - self.battery.get_min_cell_voltage()
+            except:
+                logger.debug("error occured when filling the battery cell data")
 
         # Update TimeToSoC
         if self.battery.capacity is not None and len(TIME_TO_SOC_POINTS) > 0 and self.battery.time_to_soc_update == 0:
