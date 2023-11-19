@@ -1,0 +1,40 @@
+
+
+How to connect a JKBMS to Victron CerboGX
+
+JKBMS side:
+    JST GH 1.25 male 
+    (view from end of plug)
+	
+    | - - - - -|
+    | - - - |
+    |   1*     |            ( yellow ) -> CAN-L
+    |   2*     |            ( black )  -> CAN-H
+    |   3*     |            ( red )    -> GND 
+    | - - - |
+    | - - - - -|
+    
+
+Victron CerboGX side:
+    RJ45 CAN plug
+    (view from end of plug)
+
+       |----------|
+       |     8*--         ->  CAN-L
+    |---     7*--         ->  CAN-H
+    |        6*--         ->  NET-S/V+
+    |        5*--         ->  NC
+    |        4*--         ->  NC
+    |        3*--         ->  NET-C/V-
+    |---     2*--         ->  NET-S/V+
+       |     1*--         ->  NET-C/V-
+       |----------|
+	   
+
+Connect:
+1. CAN-L with CAN-L(8)
+2. CAN-H with CAN-H(7)
+3. Add at both ends of the cable 120 Ohm termination between CAN-H and CAN-L.
+   -> only at BMS side and plug in the termination connector at cerboGX works as well.
+4. GND with fuse (~1A) and fuse with NET-S/V-(3)
+   -> the fuse is only a safety measure. It seems that the JKBMS CAN GND has no connection to the Battery GND. But I'm not 100% sure.
