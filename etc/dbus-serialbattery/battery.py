@@ -57,9 +57,10 @@ class Battery(ABC):
     use the individual implementations as type Battery and work with it.
     """
 
-    def __init__(self, port, baud, address):
+    def __init__(self, port, baud, address=None):
         self.port = port
         self.baud_rate = baud
+        self.address = address
         self.role = "battery"
         self.type = "Generic"
         self.poll_interval = 1000
@@ -87,6 +88,7 @@ class Battery(ABC):
         self.current_avg_lst = []
         self.capacity_remain = None
         self.capacity = None
+        self.installedcapacity = None
         self.cycles = None
         self.total_ah_drawn = None
         self.production = None
@@ -149,15 +151,15 @@ class Battery(ABC):
         On +/- 5 Ah you can identify 11 batteries
         """
         string = (
-            "".join(filter(str.isalnum, str(self.hardware_version))) + "_"
+            "".join(filter(str.isalnum, str(self.hardware_version)))
             if self.hardware_version is not None and self.hardware_version != ""
             else ""
         )
-        string += str(self.capacity) + "Ah"
+        string += "_" + str(self.capacity) + "Ah" if self.capacity is not None else ""
         return string
 
     def connection_name(self) -> str:
-        return "Serial " + self.port
+        return "Serial " + self.port + ( " BaseAddr: %x"%(self.address) if self.address is not None else "")
 
     def custom_name(self) -> str:
         """
@@ -166,13 +168,17 @@ class Battery(ABC):
         if len(utils.CUSTOM_BATTERY_NAMES) > 0:
             for name in utils.CUSTOM_BATTERY_NAMES:
                 tmp = name.split(":")
-                if tmp[0].strip() == self.port:
-                    return tmp[1].strip()
+                if self.address is None and len(tmp) == 2:
+                    if tmp[0].strip() == self.port:
+                        return tmp[1].strip()
+                if self.address is not None and  len(tmp) == 3:
+                    if tmp[0].strip() == self.port and int(tmp[1].strip(),16) == self.address:
+                        return tmp[2].strip()
         else:
-            return "SerialBattery(" + self.type + ")"
+            return "SerialBattery(" + self.type + ")"# + ( " BaseAddr: %x"%(self.address) if self.address is not None else "")
 
     def product_name(self) -> str:
-        return "SerialBattery(" + self.type + ")"
+        return "SerialBattery(" + self.type + ")"# + ( " BaseAddr: %x"%(self.address) if self.address is not None else "")
 
     @abstractmethod
     def get_settings(self) -> bool:
@@ -240,8 +246,11 @@ class Battery(ABC):
                 self.manage_charge_voltage_step()
         # on CVCM_ENABLE = False apply max voltage
         else:
-            self.control_voltage = round(self.max_battery_voltage, 3)
-            self.charge_mode = "Keep always max voltage"
+            if self.cell_count > 0:
+                self.control_voltage = round(self.max_battery_voltage, 3)
+                self.charge_mode = "Keep always max voltage"
+            else:
+                self.charge_mode = "Use aggregated max voltage"
 
     def prepare_voltage_management(self) -> None:
         soc_reset_last_reached_days_ago = (
@@ -1318,10 +1327,17 @@ class Battery(ABC):
                         bms_name_list = line.split(",")
                         for bms_name_pair in bms_name_list:
                             tmp = bms_name_pair.split(":")
-                            if tmp[0] == self.port:
-                                result.append(tmp[0] + ":" + value)
-                            else:
-                                result.append(bms_name_pair)
+                            if len(tmp) == 2:
+                                if tmp[0] == self.port:
+                                    result.append(tmp[0] + ":" + value)
+                                else:
+                                    result.append(bms_name_pair)
+                            if len(tmp) == 3:
+                                if tmp[0] == self.port and int(tmp[1],16) == self.address:
+                                    result.append(tmp[0] + ":" + tmp[1] + ":" + value)
+                                else:
+                                    result.append(bms_name_pair)
+
 
                         new_line = "CUSTOM_BATTERY_NAMES = " + ",".join(result)
 
@@ -1334,6 +1350,7 @@ class Battery(ABC):
                                 new_line = (
                                     "CUSTOM_BATTERY_NAMES = "
                                     + self.port
+                                    + (":" + ("%x"%(self.address)) if self.address is not None else "")
                                     + ":"
                                     + value
                                     + "\n\n"
@@ -1347,6 +1364,7 @@ class Battery(ABC):
                                     + "\n\n"
                                     + "CUSTOM_BATTERY_NAMES = "
                                     + self.port
+                                    + (":" + ("%x"%(self.address)) if self.address is not None else "")
                                     + ":"
                                     + value
                                 )

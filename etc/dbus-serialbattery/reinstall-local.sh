@@ -364,22 +364,26 @@ if [ "$can_lenght" -gt 0 ]; then
         #    exit 1
         #fi
 
-        echo "Installing CAN port \"$1\" as dbus-canbattery.$1"
+        # replace ":" with "-"
+        port_name_wo_colon="$(echo $1 | sed 's/:/-/g')"
+        #echo $port_name_wo_colon
 
-        mkdir -p "/service/dbus-canbattery.$1/log"
+        echo "Installing CAN port \"$1\" as dbus-canbattery.$port_name_wo_colon"
+
+        mkdir -p "/service/dbus-canbattery.$port_name_wo_colon/log"
         {
             echo "#!/bin/sh"
-            echo "exec multilog t s25000 n4 /var/log/dbus-canbattery.$1"
-        } > "/service/dbus-canbattery.$1/log/run"
-        chmod 755 "/service/dbus-canbattery.$1/log/run"
+            echo "exec multilog t s25000 n4 /var/log/dbus-canbattery.$port_name_wo_colon"
+        } > "/service/dbus-canbattery.$port_name_wo_colon/log/run"
+        chmod 755 "/service/dbus-canbattery.$port_name_wo_colon/log/run"
 
         {
             echo "#!/bin/sh"
             echo "exec 2>&1"
             echo "echo"
             echo "python /opt/victronenergy/dbus-serialbattery/dbus-serialbattery.py $1"
-        } > "/service/dbus-canbattery.$1/run"
-        chmod 755 "/service/dbus-canbattery.$1/run"
+        } > "/service/dbus-canbattery.$port_name_wo_colon/run"
+        chmod 755 "/service/dbus-canbattery.$port_name_wo_colon/run"
     }
 
     # Example

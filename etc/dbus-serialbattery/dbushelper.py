@@ -38,15 +38,16 @@ class DbusHelper:
         self.error = {"count": 0, "timestamp_first": None, "timestamp_last": None}
         self.block_because_disconnect = False
         self._dbusservice = VeDbusService(
-            "com.victronenergy.battery."
-            + self.battery.port[self.battery.port.rfind("/") + 1 :],
+            ("com.victronenergy.battery."
+            + self.battery.port[self.battery.port.rfind("/") + 1 :]
+            + ("-" + ("%0x"%(self.battery.address)) if self.battery.address is not None else "")),
             get_bus(),
         )
 
     def setup_instance(self):
         # bms_id = self.battery.production if self.battery.production is not None else \
         #     self.battery.port[self.battery.port.rfind('/') + 1:]
-        bms_id = self.battery.port[self.battery.port.rfind("/") + 1 :]
+        bms_id = self.battery.port[self.battery.port.rfind("/") + 1 :] + ( "_%x"%(self.battery.address) if self.battery.address is not None else "")
         path = "/Settings/Devices/serialbattery"
         default_instance = "battery:1"
         settings = {
@@ -414,6 +415,8 @@ class DbusHelper:
         )
         self._dbusservice["/Dc/0/Temperature"] = self.battery.get_temp()
         self._dbusservice["/Capacity"] = self.battery.get_capacity_remain()
+        if self.battery.installedcapacity is not None:
+            self._dbusservice["/InstalledCapacity"] = self.battery.installedcapacity
         self._dbusservice["/ConsumedAmphours"] = (
             None
             if self.battery.capacity is None
@@ -565,17 +568,34 @@ class DbusHelper:
         if utils.BATTERY_CELL_DATA_FORMAT > 0:
             try:
                 voltageSum = 0
+
+                cellpath = (
+                    "/Cell/%s/Volts"
+                    if (utils.BATTERY_CELL_DATA_FORMAT & 2)
+                    else "/Voltages/Cell%s"
+                )
+
                 for i in range(self.battery.cell_count):
                     voltage = self.battery.get_cell_voltage(i)
-                    cellpath = (
-                        "/Cell/%s/Volts"
-                        if (utils.BATTERY_CELL_DATA_FORMAT & 2)
-                        else "/Voltages/Cell%s"
-                    )
-                    self._dbusservice[cellpath % (str(i + 1))] = voltage
+                    
+                    final_cellpath = cellpath % (str(i + 1))
+                    # update dbus service
+                    if final_cellpath not in self._dbusservice:
+                        self._dbusservice.add_path(final_cellpath,
+                                                   None, 
+                                                   writeable=True, 
+                                                   gettextcallback=lambda p, v: "{:0.3f}V".format(v))
+                        self._dbusservice["/HardwareVersion"] = self.battery.hardware_version
+
+                    self._dbusservice[final_cellpath] = voltage
+
                     if utils.BATTERY_CELL_DATA_FORMAT & 1:
+                        cellpath_balance = "/Balances/Cell%s" % (str(i + 1))
+                        if cellpath_balance not in self._dbusservice:
+                            self._dbusservice.add_path(cellpath_balance, None, writeable=True)
+
                         self._dbusservice[
-                            "/Balances/Cell%s" % (str(i + 1))
+                            cellpath_balance
                         ] = self.battery.get_cell_balancing(i)
                     if voltage:
                         voltageSum += voltage
@@ -634,9 +654,10 @@ class DbusHelper:
 
                 self._dbusservice["/CurrentAvg"] = self.battery.current_avg
 
-                crntPrctPerSec = (
-                    abs(self.battery.current_avg / (self.battery.capacity / 100)) / 3600
-                )
+                if self.battery.capacity > 0:
+                    crntPrctPerSec = (
+                        abs(self.battery.current_avg / (self.battery.capacity / 100)) / 3600
+                    )
 
                 # Update TimeToGo item
                 if utils.TIME_TO_GO_ENABLE and crntPrctPerSec is not None:

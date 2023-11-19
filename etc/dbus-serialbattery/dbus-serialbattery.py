@@ -97,7 +97,7 @@ def main():
                         + test["bms"].__name__
                         + (
                             ' at address "'
-                            + utils.bytearray_to_string(test["address"])
+                            + "%0x"%(test["address"])
                             + '"'
                             if "address" in test
                             else ""
@@ -182,11 +182,24 @@ def main():
         from bms.daly_can import Daly_Can
         from bms.jkbms_can import Jkbms_Can
 
-        # only try CAN BMS on CAN port
-        supported_bms_types = [
-            {"bms": Daly_Can, "baud": 250000},
-            {"bms": Jkbms_Can, "baud": 250000},
-        ]
+        device, base_address = utils.extract_can_port(port)
+        if device is None:
+            logger.error("device could not be extracted from " + port)
+        
+        baud_rate = utils.can_baud_rate(device)
+
+        # only try CAN BMS on CAN port, if address is defined add it to the dict.
+        if base_address is None:
+            supported_bms_types = [
+                {"bms": Daly_Can, "baud": baud_rate},
+                {"bms": Jkbms_Can, "baud": baud_rate},
+            ]
+        else:
+            supported_bms_types = [
+                {"bms": Daly_Can, "baud": baud_rate, "address": int(base_address,16)},
+                {"bms": Jkbms_Can, "baud": baud_rate, "address": int(base_address,16)},
+            ]
+
 
         expected_bms_types = [
             battery_type
@@ -195,7 +208,7 @@ def main():
             or len(utils.BMS_TYPE) == 0
         ]
 
-        battery = get_battery(port)
+        battery = get_battery(device)
     else:
         # wait some seconds to be sure that the serial connection is ready
         # else the error throw a lot of timeouts

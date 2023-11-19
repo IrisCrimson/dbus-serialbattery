@@ -219,6 +219,10 @@ CUSTOM_BATTERY_NAMES = _get_list_from_config(
     "DEFAULT", "CUSTOM_BATTERY_NAMES", lambda v: str(v)
 )
 
+CAN_BAUD_RATE = _get_list_from_config(
+    "DEFAULT", "CAN_BAUD_RATE", lambda v: str(v)
+)
+
 # Auto reset SoC
 # If on, then SoC is reset to 100%, if the value switches from absorption to float voltage
 # Currently only working for Daly BMS and JK BMS BLE
@@ -261,6 +265,39 @@ VOLTAGE_DROP = float(config["DEFAULT"]["VOLTAGE_DROP"])
 
 
 # --------- Functions ---------
+
+def extract_can_port(_port) -> list:
+    """
+    Extracts the can port CANx:BaseAddress into list
+    """
+    if len(_port) > 0:
+        tmp = _port.split(":")
+        #print(tmp)
+        # if only the device name was given
+        if len(tmp) == 1:
+            return [tmp[0], None]
+        if len(tmp) == 2:
+            # if device name and base address was given
+            return tmp
+        else:
+            # some strange value
+            return [None, None]
+    else:
+        return [None, None]
+
+def can_baud_rate(_port) -> int:
+    """
+    Extracts the boud rate of the define can interface/port. If not defined use the default baud rate 250000
+    """
+    if len(CAN_BAUD_RATE) > 0:
+        for name in CAN_BAUD_RATE:
+            tmp = name.split(":")
+            if tmp[0].strip() == _port:
+                return int(tmp[1].strip())
+    else:
+        return 250000
+
+
 def constrain(val, min_val, max_val):
     if min_val > max_val:
         min_val, max_val = max_val, min_val
